@@ -1,6 +1,6 @@
 # Harness 手册
 
-Agent 架构笔记与交互实验。当前版本 **v0.1.0**（2026-11-23）。
+Agent 架构笔记与交互实验。当前版本 **v0.1.1**（2026-11-23）。
 
 这是一套个人 Harness 知识库。可以直接在 GitHub 读 Markdown，也可以在本地打开课程界面，在真实 Docker 沙箱里编辑并运行章节示例。
 
@@ -17,7 +17,7 @@ Agent 架构笔记与交互实验。当前版本 **v0.1.0**（2026-11-23）。
 | 07 | [Dreaming](content/chapters/07-dreaming.md) | 更新记忆并保留来源 |
 | 08 | [总装与复盘](content/chapters/08-assembly.md) | 串起输入、执行、验收和记忆 |
 
-补充索引：[Session、Run、Turn 和 Step](content/notes/runtime-boundaries.md)。
+补充索引：[Session、Run、Turn 和 Step](content/notes/runtime-boundaries.md) · [本地 Fast 基模烟测](content/notes/local-fast-baseline.md)。
 
 ## 本地运行
 
@@ -33,6 +33,10 @@ npm start
 在浏览器打开 <http://127.0.0.1:41737/>。服务只监听本机。首次下载官方 Node 镜像后，示例在断网容器内执行。运行服务时可另开终端执行 `npm run test:live`，逐个回归教程场景。
 
 `dist/agent-harness-lab.html` 可直接打开阅读。要编辑并运行代码，从本地服务进入。
+
+## 本地基模烟测
+
+启动本机 Magpie 后，通过 `HARNESS_MAGPIE_TOKEN` 提供本机凭据，再运行 `npm run test:model`。脚本在宿主侧使用 `codex/gpt-5.6-luna` 请求 Fast 档位，验证模型能发起工具调用并读回工具结果。请求档位与实际回传档位分别记录。
 
 ## 怎样继续维护
 

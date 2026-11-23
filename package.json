@@ -1,14 +1,17 @@
 {
   "name": "harness-knowledge-lib",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "check": "node scripts/check.mjs",
     "build": "node scripts/build.mjs",
     "start": "node dist/agent-harness-sandbox.mjs",
-    "test:live": "node scripts/test-live.mjs"
+    "test:live": "node scripts/test-live.mjs",
+    "test:model": "node scripts/test-model.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",
