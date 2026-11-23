@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN" class="dark" data-type="software">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="page-type" content="software">
+<meta name="site-kind" content="software">
+<meta name="theme-color" content="#171717">
+<meta name="description" content="{{LIBRARY_SUBTITLE}}。支持 Docker 沙箱运行与版本追踪。">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; worker-src 'none'; font-src data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="harness-version" content="{{LIBRARY_VERSION}}">
+<title>{{LIBRARY_TITLE}}</title>
+<style>/* UI_THEME */
+/* LOCAL_FONTS */
+/* APP_STYLES */</style>
+</head>
+<body id="top">
+<a class="skip" href="#{{FIRST_CHAPTER}}">跳到正文</a>
+<header class="header">
+  <div class="header-inner">
+    <a class="brand" href="#top">{{LIBRARY_TITLE}}</a>
+    <nav class="header-links" aria-label="快捷导航">
+      <a href="#{{FIRST_CHAPTER}}" data-jump="{{FIRST_CHAPTER}}">课程</a>
+      <a href="#workflow" data-jump="workflow">工作流</a>
+      <a href="#knowledge">知识索引</a>
+    </nav>
+    <div class="header-meta">
+      <a class="version-pill" id="current-version" href="#versions" aria-label="当前版本 {{LIBRARY_VERSION}}，查看版本记录">{{LIBRARY_VERSION}}</a>
+      <div class="chapter-picker" id="chapter-picker-slot"></div>
+    </div>
+  </div>
+  <div class="header-progress" id="progress" aria-hidden="true"></div>
+</header>
+<main class="wrap">
+  <section class="intro" data-enter>
+    <h1>{{LIBRARY_TITLE}}<br>从工具调用到长任务</h1>
+    <div class="intro-copy">
+      <p class="lead">{{LIBRARY_SUBTITLE}}。从一次工具调用开始，构建能恢复中断、验证交付、整理长期记忆的 Agent。</p>
+      <div class="hero-actions" id="hero-actions"></div>
+    </div>
+  </section>
+  <div class="lab-showcase" id="lab-showcase">
+    <aside class="lab" id="lab" aria-label="交互式代码工作台">
+      <div class="lab-controls" id="lab-controls"></div>
+      <div class="output-head">
+        <strong>执行日志</strong><span id="status" role="status">就绪</span>
+      </div>
+      <div class="output" id="output" aria-label="执行日志" tabindex="0"></div>
+      <div class="lab-foot">
+        <span>独立 Linux 容器 · Node.js 22</span>
+        <span class="lab-shortcut">⌘ / Ctrl + Enter</span>
+      </div>
+    </aside>
+  </div>
+  <div class="reading" id="reading">
+    <nav class="contents" aria-label="章节">
+      <p class="contents-title">目录</p>
+      <ol><!-- CONTENTS --></ol>
+    </nav>
+    <article class="article" aria-label="文章"><!-- CHAPTERS --></article>
+    <div class="lab-dock" id="lab-dock"></div>
+  </div>
+  <!-- KNOWLEDGE -->
+  <!-- VERSIONS -->
+  <footer class="footer">
+    <span>{{LIBRARY_TITLE}} · {{LIBRARY_VERSION}}</span>
+    <a href="{{LIBRARY_REPO}}" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+    <a href="#top">回到顶部 ↑</a>
+  </footer>
+</main>
+<div id="mobile-launch-slot"></div>
+<script>
+// APP_DATA
+</script>
+<script>
+// COSS_COMPONENTS
+</script>
+<script>
+// APP_SCRIPT
+</script>
+<!-- THIRD_PARTY_LICENSES -->
+</body>
+</html>

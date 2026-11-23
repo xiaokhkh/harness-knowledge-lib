@@ -1,0 +1,32 @@
+{
+  "format": 1,
+  "title": "Harness 手册",
+  "subtitle": "Agent 架构笔记与交互实验",
+  "current": "0.1.0",
+  "repository": "https://github.com/xiaokhkh/harness-knowledge-lib",
+  "chapters": [
+    "chapters/01-agent-loop.md",
+    "chapters/02-session-context.md",
+    "chapters/03-dispatcher.md",
+    "chapters/04-durable-execution.md",
+    "chapters/05-workflow.md",
+    "chapters/06-verification.md",
+    "chapters/07-dreaming.md",
+    "chapters/08-assembly.md"
+  ],
+  "notes": [
+    "notes/runtime-boundaries.md"
+  ],
+  "releases": [
+    {
+      "version": "0.1.0",
+      "date": "2026-11-23",
+      "title": "初始知识库",
+      "changes": [
+        "整理 8 章 Harness 架构材料及一篇运行边界笔记。",
+        "保留 21 个可运行场景、章节联动和前后章代码对照。",
+        "用本地 Docker 执行示例，并记录容器退出码与运行日志。"
+      ]
+    }
+  ]
+}
