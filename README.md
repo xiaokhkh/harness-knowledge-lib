@@ -2,7 +2,9 @@
 
 Agent 架构笔记与交互实验。当前版本 **v0.2.0**（2026-11-24）。
 
-这是一套个人 Harness 知识库。可以直接在 GitHub 读 Markdown，也可以在本地打开课程界面，在真实 Docker 沙箱里编辑并运行章节示例。
+[打开交互手册](https://xiaokhkh.github.io/harness-knowledge-lib/)。可在线阅读、切换章节、查看实验和代码对照。
+
+这是一套个人 Harness 知识库。Markdown 章节也可直接在仓库中阅读。编辑并运行实验需要启动下方的本地 Docker 沙箱。
 
 ## 阅读顺序
 

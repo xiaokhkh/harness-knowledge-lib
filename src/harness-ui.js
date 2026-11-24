@@ -1,5 +1,6 @@
 (() => {
   const $ = id => document.getElementById(id);
+  const publicSite = location.protocol === "https:";
   const view = HarnessComponents.mount(programs.map((program, index) => ({
     id: program.id, title: program.nav,
     navigationLabel: String(index + 1).padStart(2, "0") + " · " + program.nav,
@@ -13,7 +14,7 @@
     onCopy: copySource,
     onClose: () => closeLab(),
     onRunFirst: runFirst
-  });
+  }, publicSite);
   const editor = $("editor");
   const highlight = $("highlight");
   const changes = $("changes");
@@ -214,7 +215,7 @@
     $("status").textContent = record
       ? ({ running: "运行中", done: "已执行", error: "执行出错", stopped: "已停止" })[record.status]
         + " · " + record.events.length + " 条事件"
-      : sandboxConnected ? "Docker 就绪" : "打开本地沙箱运行";
+      : sandboxConnected ? "Docker 就绪" : "需要本地 Docker";
   }
 
   function paintRun() {
@@ -224,9 +225,13 @@
     if (record) record.events.forEach(appendLog);
     if (!record || !record.events.length) {
       const message = document.createElement("p");
-      message.textContent = record?.status === "running" ? "正在启动独立容器…" : "运行本章代码后，在这里查看事件、原始输出和容器退出码。";
+      message.textContent = record?.status === "running"
+        ? "正在启动独立容器…"
+        : publicSite ? "可在线查看代码和对照差异。运行实验需要本地 Docker。"
+        : "运行本章代码后，在这里查看事件、原始输出和容器退出码。";
       output.append(message);
-      if (!record) {
+      if (publicSite) appendSandboxLinks();
+      else if (!record) {
         const runtime = document.createElement("dl");
         runtime.className = "idle-environment";
         for (const [label, value] of [["工作目录", "/workspace"], ["网络", "none"]]) {
@@ -239,6 +244,22 @@
         output.append(runtime);
       }
     }
+  }
+
+  function appendSandboxLinks() {
+    const links = document.createElement("p");
+    const setup = document.createElement("a");
+    const launch = document.createElement("a");
+    setup.href = document.body.dataset.repository + "#本地运行";
+    setup.textContent = "查看启动说明";
+    launch.href = sandboxOrigin + "/#" + programs[active].id;
+    launch.textContent = "打开已启动的本地沙箱";
+    for (const link of [setup, launch]) {
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+    }
+    links.append(setup, " · ", launch);
+    output.append(links);
   }
 
   function finishRun(job, state, message) {
@@ -259,6 +280,12 @@
   }
 
   async function runCode() {
+    if (publicSite) {
+      paintRun();
+      $("status").textContent = "请先启动本地 Docker 沙箱";
+      output.focus({ preventScroll: true });
+      return;
+    }
     if (!sandboxConnected) {
       location.assign(sandboxOrigin + "/#" + programs[active].id);
       return;

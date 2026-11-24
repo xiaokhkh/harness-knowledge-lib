@@ -31,6 +31,7 @@ type LabState = {
   view: "code" | "changes";
   running: boolean;
   copyLabel: string;
+  publicSite: boolean;
 };
 
 function Picker({ id, label, options, value, onChange }: {
@@ -97,7 +98,7 @@ function LabControls({ state, handlers }: { state: LabState; handlers: Handlers 
             </Button>
             <Button size="sm" type="button" id="run-button" className="run" onClick={handlers.onRun}>
               {state.running ? <SquareIcon aria-hidden="true" /> : <PlayIcon aria-hidden="true" />}
-              {state.running ? "停止" : "运行"}
+              {state.running ? "停止" : state.publicSite ? "本地运行" : "运行"}
             </Button>
           </div>
         </div>
@@ -113,14 +114,14 @@ function LabControls({ state, handlers }: { state: LabState; handlers: Handlers 
   );
 }
 
-export function mount(chapters: Chapter[], handlers: Handlers) {
+export function mount(chapters: Chapter[], handlers: Handlers, publicSite: boolean) {
   const root = createRoot(document.getElementById("lab-controls")!);
   const expectedSlots = Array.from(document.querySelectorAll<HTMLElement>("[data-expected]"))
     .map(element => ({ element, text: element.dataset.expected ?? "" }));
   const chapterOptions = chapters.map(chapter => ({ value: chapter.id, label: chapter.navigationLabel }));
   let state: LabState = {
     chapter: chapters[0], index: "01 / " + String(chapters.length).padStart(2, "0"), scenario: chapters[0].scenarios[0].value,
-    view: "code", running: false, copyLabel: "复制代码"
+    view: "code", running: false, copyLabel: "复制代码", publicSite
   };
   function render() {
     root.render(
@@ -130,7 +131,7 @@ export function mount(chapters: Chapter[], handlers: Handlers) {
           <>
             <Button id="hero-run" onClick={handlers.onRunFirst}>
               <PlayIcon aria-hidden="true" />
-              运行第一章
+              {state.publicSite ? "本地运行实验" : "运行第一章"}
             </Button>
             <Button variant="outline" render={<a href={"#" + chapters[0].id} data-jump={chapters[0].id} />}>
               开始阅读
