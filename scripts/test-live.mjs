@@ -67,6 +67,17 @@ async function worker() {
     if (job.id === "loop" && job.scenario === "normal") {
       assert(events.some(event => event.data?.result?.stdout?.includes("configured limit is 2")));
     }
+    if (job.id === "dispatcher" && job.scenario.startsWith("cross-")) {
+      const wake = job.scenario === "cross-wake";
+      const eventIndex = name => events.findIndex(event => event.name === name);
+      assert.equal(find(events, "target.after_delivery").data.running, wake);
+      assert.equal(find(events, "target.after_delivery").data.pending, wake ? 0 : 1);
+      assert.deepEqual(find(events, "thread.context").data.messages, ["B 的项目背景", "检查购物车测试"]);
+      assert.deepEqual(find(events, "thread.result").data.received, ["review-1"]);
+      assert(find(events, "router.duplicate"));
+      assert(eventIndex("router.accepted") < eventIndex("host.run_started"));
+      if (!wake) assert(eventIndex("target.explicit_wake") < eventIndex("host.run_started"));
+    }
     if (job.id === "durable") {
       const pids = new Set(events.filter(event => event.name === "process.worker").map(event => event.data.pid));
       assert.equal(pids.size, 3);

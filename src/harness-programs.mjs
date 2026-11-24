@@ -126,14 +126,19 @@ class Dispatcher {
     this.running = null;
   }
 
-  submit(event) {
+  submit(event, { wake = true } = {}) {
     trace("inbox.received", event);
     if (event.kind === "steer" && this.running) {
       this.steers.push(event);
       return;
     }
     this.queue.push(event);
-    if (!this.running) this.running = this.drain();
+    if (wake) this.wake();
+  }
+
+  wake() {
+    if (!this.running && this.queue.length) this.running = this.drain();
+    return this.running;
   }
 
   async drain() {
@@ -147,6 +152,54 @@ class Dispatcher {
       this.running = null;
     }
   }
+}
+
+class ThreadRouter {
+  constructor(dispatchers) {
+    this.dispatchers = dispatchers;
+    this.accepted = new Map();
+  }
+
+  deliver(message, { wake = false } = {}) {
+    const { from, to, id, text } = message;
+    const target = this.dispatchers.get(to);
+    if (!target) throw new Error("找不到目标会话 " + to);
+
+    const received = this.accepted.get(to) ?? new Set();
+    const key = JSON.stringify([from, id]);
+    if (received.has(key)) {
+      trace("router.duplicate", { from, to, id });
+      return;
+    }
+    target.submit({ kind: "cross-thread", from, to, id, text }, { wake: false });
+    received.add(key);
+    this.accepted.set(to, received);
+    trace("router.accepted", { from, to, id, wake });
+    if (wake) target.wake();
+  }
+}
+
+async function demonstrateRouting(wake) {
+  // A、B 分别持有自己的历史。只有显式发送的信息进入 B。
+  const historyA = ["A 的项目背景"];
+  const historyB = ["B 的项目背景"];
+  const received = [];
+  const target = new Dispatcher(async event => {
+    received.push(event.id);
+    const context = [...historyB, event.text];
+    trace("thread.context", { threadId: "B", messages: context });
+  });
+  const router = new ThreadRouter(new Map([["B", target]]));
+  const message = { from: "A", to: "B", id: "review-1", text: "检查购物车测试" };
+  router.deliver(message, { wake });
+  router.deliver(message, { wake });
+  trace("target.after_delivery", { threadId: "B", running: Boolean(target.running), pending: target.queue.length });
+  if (!wake) {
+    trace("target.explicit_wake", "B");
+    target.wake();
+  }
+  await target.running;
+  trace("thread.result", { threadId: "B", received, senderHistory: historyA });
 }
 
 function createDemoDisk(root = process.cwd()) {
@@ -354,30 +407,41 @@ console.log("历史里的原始工具输出", store.events[2].data.content);`)
   },
   {
     id: "dispatcher",
-    scenarios: [["both", "同时投递 steer 与 follow-up"], ["follow", "只投递 follow-up"], ["steer", "只投递 steer"]],
-    code: sources(Dispatcher, `// 用 promise 模拟一个仍在进行的工具调用。
-let finishTool;
-const tool = new Promise(resolve => { finishTool = resolve; });
-const dispatcher = new Dispatcher(async (event, takeSteers) => {
-  if (event.kind === "start") {
-    trace("agent.tool_running", "read_file(cart.ts)");
-    await tool;
-    trace("agent.tool_finished", "read_file(cart.ts)");
-  }
-  const messages = [event.text, ...takeSteers().map(item => item.text)];
-  trace("model.next_request", messages);
-  trace("host.run_finished", event.kind);
-});
+    scenarios: [
+      ["both", "同时投递 steer 与 follow-up"], ["follow", "只投递 follow-up"], ["steer", "只投递 steer"],
+      ["cross-queue", "跨会话 · 只投递"], ["cross-wake", "跨会话 · 投递并唤醒"]
+    ],
+    code: sources(Dispatcher, ThreadRouter, demonstrateRouting, `if (scenario === "cross-queue" || scenario === "cross-wake") {
+  await demonstrateRouting(scenario === "cross-wake");
+} else {
+  await demonstrateSteering();
+}
 
-dispatcher.submit({ kind: "start", text: "修改购物车上限" });
-if (scenario !== "follow") {
-  dispatcher.submit({ kind: "steer", text: "先给我看 diff" });
-}
-if (scenario !== "steer") {
-  dispatcher.submit({ kind: "follow-up", text: "做完后再补测试" });
-}
-finishTool();
-await dispatcher.running;`)
+async function demonstrateSteering() {
+  // 用 promise 模拟一个仍在进行的工具调用。
+  let finishTool;
+  const tool = new Promise(resolve => { finishTool = resolve; });
+  const dispatcher = new Dispatcher(async (event, takeSteers) => {
+    if (event.kind === "start") {
+      trace("agent.tool_running", "read_file(cart.ts)");
+      await tool;
+      trace("agent.tool_finished", "read_file(cart.ts)");
+    }
+    const messages = [event.text, ...takeSteers().map(item => item.text)];
+    trace("model.next_request", messages);
+    trace("host.run_finished", event.kind);
+  });
+
+  dispatcher.submit({ kind: "start", text: "修改购物车上限" });
+  if (scenario !== "follow") {
+    dispatcher.submit({ kind: "steer", text: "先给我看 diff" });
+  }
+  if (scenario !== "steer") {
+    dispatcher.submit({ kind: "follow-up", text: "做完后再补测试" });
+  }
+  finishTool();
+  await dispatcher.running;
+}`)
   },
   {
     id: "durable",

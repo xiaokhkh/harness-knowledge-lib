@@ -2,7 +2,7 @@
   "format": 1,
   "title": "Harness 手册",
   "subtitle": "Agent 架构笔记与交互实验",
-  "current": "0.1.1",
+  "current": "0.2.0",
   "repository": "https://github.com/xiaokhkh/harness-knowledge-lib",
   "chapters": [
     "chapters/01-agent-loop.md",
@@ -16,9 +16,20 @@
   ],
   "notes": [
     "notes/runtime-boundaries.md",
-    "notes/local-fast-baseline.md"
+    "notes/local-fast-baseline.md",
+    "notes/codex-thread-routing.md"
   ],
   "releases": [
+    {
+      "version": "0.2.0",
+      "date": "2026-11-24",
+      "title": "跨会话通信",
+      "changes": [
+        "在事件调度章加入跨会话路由、排队、唤醒和接收回执。",
+        "新增 Codex 开源实现导读，区分 App Server 用户输入队列、Agent 消息工具和桌面端工具。",
+        "新增两个可运行场景，验证空闲目标是否立即启动以及重复投递如何去重。"
+      ]
+    },
     {
       "version": "0.1.1",
       "date": "2026-11-23",

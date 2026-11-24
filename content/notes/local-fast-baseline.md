@@ -14,7 +14,7 @@
 
 ## 怎么运行
 
-在本机启动 Magpie，并通过环境变量 `HARNESS_MAGPIE_TOKEN` 提供本机凭据，然后运行 `npm run test:model`。脚本在宿主侧执行。原有 21 个教程场景仍用 `npm run test:live` 回归，继续在断网的 Docker 容器内运行。
+在本机启动 Magpie，并通过环境变量 `HARNESS_MAGPIE_TOKEN` 提供本机凭据，然后运行 `npm run test:model`。脚本在宿主侧执行。教程场景继续用 `npm run test:live` 回归，继续在断网的 Docker 容器内运行。
 
 ## 参考资料
 

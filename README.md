@@ -1,6 +1,6 @@
 # Harness 手册
 
-Agent 架构笔记与交互实验。当前版本 **v0.1.1**（2026-11-23）。
+Agent 架构笔记与交互实验。当前版本 **v0.2.0**（2026-11-24）。
 
 这是一套个人 Harness 知识库。可以直接在 GitHub 读 Markdown，也可以在本地打开课程界面，在真实 Docker 沙箱里编辑并运行章节示例。
 
@@ -10,14 +10,14 @@ Agent 架构笔记与交互实验。当前版本 **v0.1.1**（2026-11-23）。
 | --- | --- | --- |
 | 01 | [Agent Loop](content/chapters/01-agent-loop.md) | 模型、工具和停止条件 |
 | 02 | [会话与上下文](content/chapters/02-session-context.md) | 分支与压缩保留原始历史 |
-| 03 | [事件调度](content/chapters/03-dispatcher.md) | steer 与 follow-up 的时机 |
+| 03 | [事件调度](content/chapters/03-dispatcher.md) | steer、follow-up 与跨会话路由 |
 | 04 | [崩溃恢复](content/chapters/04-durable-execution.md) | 子进程退出后从磁盘恢复 |
 | 05 | [动态工作流](content/chapters/05-workflow.md) | 并行分支与失败重跑 |
 | 06 | [独立验收](content/chapters/06-verification.md) | 用失败证据驱动修复 |
 | 07 | [Dreaming](content/chapters/07-dreaming.md) | 更新记忆并保留来源 |
 | 08 | [总装与复盘](content/chapters/08-assembly.md) | 串起输入、执行、验收和记忆 |
 
-补充索引：[Session、Run、Turn 和 Step](content/notes/runtime-boundaries.md) · [本地 Fast 基模烟测](content/notes/local-fast-baseline.md)。
+补充索引：[Session、Run、Turn 和 Step](content/notes/runtime-boundaries.md) · [本地 Fast 基模烟测](content/notes/local-fast-baseline.md) · [Codex 跨会话通信源码导读](content/notes/codex-thread-routing.md)。
 
 ## 本地运行
 
