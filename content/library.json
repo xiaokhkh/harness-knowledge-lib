@@ -2,7 +2,7 @@
   "format": 1,
   "title": "Harness 手册",
   "subtitle": "Agent 架构笔记与交互实验",
-  "current": "0.2.1",
+  "current": "0.2.2",
   "repository": "https://github.com/xiaokhkh/harness-knowledge-lib",
   "chapters": [
     "chapters/01-agent-loop.md",
@@ -20,6 +20,14 @@
     "notes/codex-thread-routing.md"
   ],
   "releases": [
+    {
+      "version": "0.2.2",
+      "date": "2026-11-24",
+      "title": "修复官方架构图显示",
+      "changes": [
+        "允许站点从 Anthropic 官方图片域名加载 Dreaming 架构图。"
+      ]
+    },
     {
       "version": "0.2.1",
       "date": "2026-11-24",
