@@ -25,6 +25,21 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run build
+      - name: Verify examples in the Docker sandbox
+        run: |
+          sandbox_log=$(mktemp)
+          node dist/agent-harness-sandbox.mjs >"$sandbox_log" 2>&1 &
+          sandbox_pid=$!
+          trap 'kill "$sandbox_pid" 2>/dev/null || true' EXIT
+          trap 'cat "$sandbox_log"' ERR
+          for attempt in {1..180}; do
+            if curl -fsS --max-time 1 http://127.0.0.1:41737/api/sandbox >/dev/null 2>&1; then
+              break
+            fi
+            kill -0 "$sandbox_pid"
+            sleep 1
+          done
+          npm run test:live
       - name: Prepare public page
         run: |
           mkdir _site

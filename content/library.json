@@ -2,7 +2,7 @@
   "format": 1,
   "title": "Harness 手册",
   "subtitle": "Agent 架构笔记与交互实验",
-  "current": "0.2.0",
+  "current": "0.2.1",
   "repository": "https://github.com/xiaokhkh/harness-knowledge-lib",
   "chapters": [
     "chapters/01-agent-loop.md",
@@ -20,6 +20,16 @@
     "notes/codex-thread-routing.md"
   ],
   "releases": [
+    {
+      "version": "0.2.1",
+      "date": "2026-11-24",
+      "title": "调度与恢复修订",
+      "changes": [
+        "修复首轮失败时的队列推进，以及冲突待核对状态的恢复。发布前在 Docker 沙箱验证实验行为。",
+        "补充 Anthropic 的四层记忆图、Dreams API 边界及 Codex Turn 术语映射。",
+        "总装实验让工作流分析与验收证据进入规则模型的下一次请求，共 25 个场景。"
+      ]
+    },
     {
       "version": "0.2.0",
       "date": "2026-11-24",

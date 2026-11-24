@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { programs } from "../src/harness-programs.mjs";
+import { assertScenario, cases } from "./scenario-cases.mjs";
 
 const origin = "http://127.0.0.1:41737";
 const headers = { Origin: origin, "Content-Type": "application/json" };
@@ -56,7 +56,6 @@ console.log("隔离边界已验证", checked);
 const next = await run('import assert from "node:assert/strict"; import {existsSync} from "node:fs"; assert.equal(existsSync("isolation-marker"),false);');
 verifyFinish(next);
 
-const cases = programs.flatMap(program => program.scenarios.map(([scenario]) => ({ ...program, scenario })));
 let cursor = 0;
 async function worker() {
   for (;;) {
@@ -64,28 +63,10 @@ async function worker() {
     if (!job) return;
     const events = await run(job.code, job.scenario);
     verifyFinish(events);
-    if (job.id === "loop" && job.scenario === "normal") {
-      assert(events.some(event => event.data?.result?.stdout?.includes("configured limit is 2")));
-    }
-    if (job.id === "dispatcher" && job.scenario.startsWith("cross-")) {
-      const wake = job.scenario === "cross-wake";
-      const eventIndex = name => events.findIndex(event => event.name === name);
-      assert.equal(find(events, "target.after_delivery").data.running, wake);
-      assert.equal(find(events, "target.after_delivery").data.pending, wake ? 0 : 1);
-      assert.deepEqual(find(events, "thread.context").data.messages, ["B 的项目背景", "检查购物车测试"]);
-      assert.deepEqual(find(events, "thread.result").data.received, ["review-1"]);
-      assert(find(events, "router.duplicate"));
-      assert(eventIndex("router.accepted") < eventIndex("host.run_started"));
-      if (!wake) assert(eventIndex("target.explicit_wake") < eventIndex("host.run_started"));
-    }
-    if (job.id === "durable") {
-      const pids = new Set(events.filter(event => event.name === "process.worker").map(event => event.data.pid));
-      assert.equal(pids.size, 3);
-      if (job.scenario === "conflict") assert.equal(find(events,"step.reconciled").data.result.status,"unknown");
-    }
-    if (job.id === "assembly" && job.scenario === "recover") {
-      assert(find(events, "next_session.startup_context"));
-      assert(find(events, "process.interrupted"));
+    try {
+      assertScenario(job, events);
+    } catch (error) {
+      throw new Error(job.id + "/" + job.scenario + " 未通过", { cause: error });
     }
     console.log(job.id, job.scenario, events.length);
   }

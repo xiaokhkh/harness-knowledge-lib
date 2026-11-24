@@ -1,6 +1,6 @@
 {
   "name": "harness-knowledge-lib",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "engines": {
@@ -10,6 +10,7 @@
     "check": "node scripts/check.mjs",
     "build": "node scripts/build.mjs",
     "start": "node dist/agent-harness-sandbox.mjs",
+    "test:scenarios": "node scripts/test-scenarios.mjs",
     "test:live": "node scripts/test-live.mjs",
     "test:model": "node scripts/test-model.mjs"
   },

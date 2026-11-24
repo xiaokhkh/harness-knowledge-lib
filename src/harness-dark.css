@@ -68,6 +68,7 @@ a:focus-visible, textarea:focus-visible, summary:focus-visible { outline:2px sol
 .chapter-lead { font-size:17px; line-height:1.74; margin:0 0 23px; color:#e4e4e4; }
 .chapter h3 { margin:22px 0 7px; font-size:16px; font-weight:600; }
 .chapter p:not(.chapter-lead) { margin:0 0 10px; color:var(--body-copy); line-height:1.79; font-size:15px; }
+.chapter img { display:block; max-width:100%; height:auto; border-radius:8px; }
 .chapter code { background:#232323; color:#ededed; padding:.12em .31em; border:1px solid var(--border); border-radius:6px; font:.85em var(--mono); overflow-wrap:anywhere; }
 .exercise { margin:24px 0 19px; padding:14px 16px 9px; background:var(--card); border:1px solid var(--border); border-radius:14px; }
 .exercise h3 { margin:0 0 5px; color:var(--foreground); font-size:14px; }

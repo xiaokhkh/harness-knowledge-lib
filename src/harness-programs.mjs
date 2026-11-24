@@ -5,8 +5,8 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";`;
 
 function runWorkspaceTests(directory, path) {
-  const testFile = join(directory, "limits.test.mjs");
-  writeFileSync(testFile, [
+  const testFile = "limits.test.mjs";
+  writeFileSync(join(directory, testFile), [
     'import test from "node:test";',
     'import assert from "node:assert/strict";',
     'import { readFileSync } from "node:fs";',
@@ -21,7 +21,7 @@ function runWorkspaceTests(directory, path) {
     env: { ...process.env, HARNESS_FIXTURE: path }
   });
   return {
-    pass: result.status === 0, path, exitCode: result.status,
+    pass: result.status === 0, path, exitCode: result.status, command: "node --test " + testFile,
     stdout: result.stdout?.trim(), stderr: result.error?.message ?? result.stderr?.trim()
   };
 }
@@ -137,7 +137,8 @@ class Dispatcher {
   }
 
   wake() {
-    if (!this.running && this.queue.length) this.running = this.drain();
+    // 占有运行槽位后，才在微任务中调用用户提供的处理器。
+    if (!this.running && this.queue.length) this.running = Promise.resolve().then(() => this.drain());
     return this.running;
   }
 
@@ -146,7 +147,15 @@ class Dispatcher {
       while (this.queue.length) {
         const event = this.queue.shift();
         trace("host.run_started", event.text);
-        await this.run(event, () => this.steers.splice(0));
+        try {
+          await this.run(event, () => this.steers.splice(0));
+          trace("host.run_finished", event.kind);
+        } catch (error) {
+          trace("host.run_failed", { event: event.text, error: error?.message ?? String(error) });
+        } finally {
+          // steer 属于当前 run，未消费的输入不能悄悄转给下一轮。
+          if (this.steers.length) trace("host.steer_unconsumed", this.steers.splice(0));
+        }
       }
     } finally {
       this.running = null;
@@ -233,14 +242,15 @@ class StepRunner {
 
   async run(id, { action, recover }) {
     const existing = this.disk.read(id);
-    if (existing?.status === "done") {
+    if (existing?.status === "done" && existing.result?.status !== "unknown") {
       trace("step.reused", id);
       return existing.result;
     }
-    if (existing?.status === "started") {
+    if (existing) {
       const result = await recover();
-      this.disk.write(id, { status: "done", result });
-      trace("step.reconciled", { id, result });
+      const status = result?.status === "unknown" ? "needs_review" : "done";
+      this.disk.write(id, { status, result });
+      trace(status === "done" ? "step.reconciled" : "step.needs_review", { id, result });
       return result;
     }
     this.disk.write(id, { status: "started" });
@@ -351,27 +361,29 @@ async function runWithVerification({ agent, verify, maxAttempts = 2 }) {
   return { status: "failed", reason: "验收未通过", evidence: feedback };
 }
 
-function consolidate(sessions, previous = {}) {
-  const notes = structuredClone(previous);
+function extractMemoryNotes(sessions) {
+  const notes = [];
   for (const session of sessions) {
     for (const event of session.events) {
       if (event.type !== "project.convention_confirmed") continue;
       const { key, value } = event.data;
-      const prior = notes[key];
-      notes[key] = {
-        value,
-        source: { sessionId: session.id, eventId: event.id },
-        supersedes: prior?.source ?? null
-      };
+      notes.push({ key, value, source: { sessionId: session.id, eventId: event.id } });
     }
   }
   return notes;
 }
 
-function loadStartupIndex(notes) {
-  return Object.entries(notes).slice(0, 3).map(([key, note]) => ({
-    key, value: note.value, source: note.source
-  }));
+function buildMemoryRepresentation(notes) {
+  const byKey = new Map();
+  for (const note of notes) {
+    const prior = byKey.get(note.key);
+    byKey.set(note.key, { ...note, supersedes: prior?.source ?? null });
+  }
+  return byKey;
+}
+
+function loadStartupIndex(representation) {
+  return [...representation.values()].slice(0, 3).map(({ key, value, source }) => ({ key, value, source }));
 }
 
 export const programs = [
@@ -409,10 +421,13 @@ console.log("历史里的原始工具输出", store.events[2].data.content);`)
     id: "dispatcher",
     scenarios: [
       ["both", "同时投递 steer 与 follow-up"], ["follow", "只投递 follow-up"], ["steer", "只投递 steer"],
-      ["cross-queue", "跨会话 · 只投递"], ["cross-wake", "跨会话 · 投递并唤醒"]
+      ["cross-queue", "跨会话 · 只投递"], ["cross-wake", "跨会话 · 投递并唤醒"],
+      ["failure", "首轮失败，队列继续"]
     ],
     code: sources(Dispatcher, ThreadRouter, demonstrateRouting, `if (scenario === "cross-queue" || scenario === "cross-wake") {
   await demonstrateRouting(scenario === "cross-wake");
+} else if (scenario === "failure") {
+  await demonstrateFailure();
 } else {
   await demonstrateSteering();
 }
@@ -429,7 +444,6 @@ async function demonstrateSteering() {
     }
     const messages = [event.text, ...takeSteers().map(item => item.text)];
     trace("model.next_request", messages);
-    trace("host.run_finished", event.kind);
   });
 
   dispatcher.submit({ kind: "start", text: "修改购物车上限" });
@@ -441,11 +455,24 @@ async function demonstrateSteering() {
   }
   finishTool();
   await dispatcher.running;
+}
+
+async function demonstrateFailure() {
+  const dispatcher = new Dispatcher(event => {
+    if (event.kind === "start") {
+      dispatcher.submit({ kind: "follow-up", text: "补充测试" });
+      throw new Error("第一轮工具失败");
+    }
+    trace("model.next_request", [event.text]);
+  });
+  dispatcher.submit({ kind: "start", text: "修改购物车" });
+  dispatcher.submit({ kind: "steer", text: "先给我看 diff" });
+  await dispatcher.running;
 }`)
   },
   {
     id: "durable",
-    scenarios: [["after", "文件写完、结果落盘前中断"], ["before", "写入文件前中断"], ["conflict", "中断期间文件被其他操作修改"]],
+    scenarios: [["after", "文件写完、结果落盘前中断"], ["before", "写入文件前中断"], ["conflict", "文件冲突，人工核对后恢复"]],
     code: sources(nodeImports, createDemoDisk, Interrupted, StepRunner, patchStep, runPatchProcess, `const disk = createDemoDisk();
 disk.write("cart.ts", "export const cartLimit = 1;");
 const id = "patch-cart";
@@ -455,6 +482,13 @@ runPatchProcess(disk, id, scenario === "before" ? "before" : "after");
 if (scenario === "conflict") disk.write("cart.ts", "export const cartLimit = 9;");
 trace("process.restarting", disk.read(id));
 console.log("恢复结果", runPatchProcess(disk, id, "resume"));
+if (scenario === "conflict") {
+  trace("workspace.conflict_preserved", { file: disk.read("cart.ts"), status: disk.read(id).status });
+  // 模拟人工核对后把文件修正为预期内容，再由新的进程确认。
+  disk.write("cart.ts", "export const cartLimit = 2;");
+  trace("workspace.conflict_resolved", disk.read("cart.ts"));
+  runPatchProcess(disk, id, "resume");
+}
 runPatchProcess(disk, id, "resume");
 console.log("最终文件", disk.read("cart.ts"));`)
   },
@@ -521,33 +555,38 @@ trace("run." + outcome.status, outcome);`)
   {
     id: "dreaming",
     scenarios: [["refresh", "运行 Dreaming 后开启新会话"], ["stale", "保留上一版记忆"]],
-    code: sources(SessionStore, consolidate, loadStartupIndex, `const first = { id: "s-001", store: new SessionStore() };
+    code: sources(SessionStore, extractMemoryNotes, buildMemoryRepresentation, loadStartupIndex, `const first = { id: "s-001", store: new SessionStore() };
 first.store.append("project.convention_confirmed", { key: "testCommand", value: "pnpm test" });
 const second = { id: "s-002", store: new SessionStore() };
 second.store.append("message", { role: "user", content: "仓库已迁移到 npm" });
 second.store.append("project.convention_confirmed", { key: "testCommand", value: "npm test" });
 
-const snapshot = session => ({ id: session.id, events: session.store.branch() });
-const previous = consolidate([snapshot(first)]);
-trace("memory.previous", previous);
-const notes = scenario === "stale" ? previous : consolidate([snapshot(second)], previous);
-trace("memory.store", notes);
-const index = loadStartupIndex(notes);
+const transcripts = [first, second].map(({ id, store }) => ({ id, events: store.branch() }));
+trace("memory.transcripts", transcripts);
+const notes = extractMemoryNotes(scenario === "stale" ? transcripts.slice(0, 1) : transcripts);
+trace("memory.notes", notes);
+const representation = buildMemoryRepresentation(notes);
+trace("memory.representation", Object.fromEntries(representation));
+const index = loadStartupIndex(representation);
 trace("session.startup_context", index);
 const source = index[0].source;
-const original = [first, second].find(session => session.id === source.sessionId);
-trace("memory.source_event", original.store.events.find(event => event.id === source.eventId));`)
+const original = transcripts.find(session => session.id === source.sessionId);
+trace("memory.source_event", original.events.find(event => event.id === source.eventId));`)
   },
   {
     id: "assembly",
-    scenarios: [["recover", "写到一半中断并继续"], ["normal", "正常执行"], ["reject", "验收失败，保留证据"]],
+    scenarios: [
+      ["recover", "写到一半中断并继续"], ["normal", "正常执行"],
+      ["stock-first", "将库存设为优先修改项"], ["reject", "验收失败，保留证据"]
+    ],
     code: sources(
       nodeImports, runWorkspaceTests, SessionStore, buildContext, Dispatcher, runAgent,
       createDemoDisk, Interrupted, StepRunner, patchStep, runPatchProcess,
-      WorkflowRunner, runWithVerification, consolidate, loadStartupIndex,
+      WorkflowRunner, runWithVerification, extractMemoryNotes, buildMemoryRepresentation, loadStartupIndex,
       `const session = new SessionStore();
 const disk = createDemoDisk();
 const paths = ["cart.ts", "stock.ts"];
+const priority = scenario === "stock-first" ? [...paths].reverse() : paths;
 disk.write(paths[0], "export const cartLimit = 1;");
 disk.write(paths[1], "export const stockLimit = 1;");
 const steps = new StepRunner(disk);
@@ -555,8 +594,11 @@ const steps = new StepRunner(disk);
 const dispatcher = new Dispatcher(async input => {
   session.append("message", { role: "user", content: input.text });
   const workflow = new WorkflowRunner(new Map(), {
-    inspect(path) { return { path, original: disk.read(path) }; },
-    merge(_, results) { return paths.map(path => results.get(path)); }
+    inspect(path) {
+      const original = disk.read(path);
+      return { path, original, needsPatch: !original.trim().endsWith("= 2;") };
+    },
+    merge(_, results) { return priority.map(path => results.get(path)); }
   });
   const analysis = await workflow.run([
     paths.map(path => ({ id: path, kind: "inspect", input: path })),
@@ -576,22 +618,33 @@ const dispatcher = new Dispatcher(async input => {
   };
 
   const output = await runWithVerification({
-    async agent({ attempt, feedback }) {
-      if (feedback) session.append("message", { role: "user", content: feedback });
-      const path = attempt === 1 ? paths[0] : paths[1];
-      const messages = buildContext(session.branch());
+    async agent({ attempt }) {
+      const events = session.branch();
+      // 上下文保留工作流与验收器的来源，消息仍走原有投影。
+      const context = {
+        messages: buildContext(events),
+        analysis: events.findLast(event => event.type === "workflow.result").data,
+        verification: events.findLast(event => event.type === "verification.result")?.data.evidence ?? null
+      };
       let toolProposed = false;
       return runAgent({
-        messages, tools, maxTurns: 2, runId: "attempt-" + attempt,
-        model() {
-          if (toolProposed || (scenario === "reject" && attempt > 1)) {
+        messages: context.messages, tools, maxTurns: 2, runId: "attempt-" + attempt,
+        model(messages) {
+          if (toolProposed) return { answer: "提交本轮修改作为候选交付" };
+          const request = { ...context, messages };
+          const candidates = request.verification
+            ? [...request.verification.pending]
+            : request.analysis.filter(item => item.needsPatch).map(item => item.path);
+          const [path] = candidates;
+          trace("assembly.model_input", { analysis: request.analysis, verification: request.verification, candidates });
+          if (!path || (scenario === "reject" && request.verification)) {
             return { answer: "提交本轮修改作为候选交付" };
           }
           toolProposed = true;
           return { tool: "patch_module", args: { path } };
         },
         record(message) {
-          messages.push(message);
+          context.messages.push(message);
           session.append("message", message);
         }
       });
@@ -599,15 +652,22 @@ const dispatcher = new Dispatcher(async input => {
     async verify() {
       const tests = paths.map(path => runWorkspaceTests(disk.root, path));
       const pending = tests.filter(test => !test.pass).map(test => test.path);
-      return { pass: pending.length === 0, evidence: pending.length ? "仍需修改 " + pending.join(", ") : "两个模块均通过", tests };
+      const evidence = { pending, summary: pending.length ? "仍需修改 " + pending.join(", ") : "两个模块均通过" };
+      const result = { pass: pending.length === 0, evidence, tests };
+      session.append("verification.result", result);
+      return result;
     }
   });
 
   trace("delivery." + output.status, output);
   if (output.status === "completed") {
-    session.append("project.convention_confirmed", { key: "testCommand", value: "npm test" });
-    const notes = consolidate([{ id: "delivery-session", events: session.branch() }]);
-    trace("next_session.startup_context", loadStartupIndex(notes));
+    const verification = session.events.at(-1);
+    const noteEventId = session.append("project.convention_confirmed", {
+      key: "testCommand", value: verification.data.tests[0].command, evidenceEventId: verification.id
+    });
+    const notes = extractMemoryNotes([{ id: "delivery-session", events: session.branch() }]);
+    trace("next_session.startup_context", loadStartupIndex(buildMemoryRepresentation(notes)));
+    trace("memory.source_event", session.branch(noteEventId).at(-1));
   }
 });
 

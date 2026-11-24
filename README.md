@@ -34,6 +34,8 @@ npm start
 
 在浏览器打开 <http://127.0.0.1:41737/>。服务只监听本机。首次下载官方 Node 镜像后，示例在断网容器内执行。运行服务时可另开终端执行 `npm run test:live`，逐个回归教程场景。
 
+可以用 `npm run test:scenarios` 直接在 Node 中检查章节行为。GitHub Pages 发布前会在 Docker 沙箱内运行相同的行为断言，并检查容器隔离和执行超时。
+
 `dist/agent-harness-lab.html` 可直接打开阅读。要编辑并运行代码，从本地服务进入。
 
 ## 本地基模烟测
